@@ -243,7 +243,7 @@ class Geopicker extends Widget {
             // set worldview in case permissions take too long (e.g. in FF);
             this._updateMap( [ 0, 0 ], 1 );
         
-            options = {
+            var options = {
               enableHighAccuracy: true,
               timeout: 0,
               maximumAge: 0
