@@ -251,7 +251,7 @@ class Geopicker extends Widget {
 
             if ( this.props.detect ) {
 
-                navigator.geolcoation.watchPosition(
+                navigator.geolocation.watchPosition(
                      position => { console.log("watch success:" + position.coords)  }, 
                      error => { console.log("watchPosition error:" + error.message) } 
                      ,options);
