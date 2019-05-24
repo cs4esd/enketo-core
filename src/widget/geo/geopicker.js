@@ -242,7 +242,20 @@ class Geopicker extends Widget {
         if ( !loadedVal ) {
             // set worldview in case permissions take too long (e.g. in FF);
             this._updateMap( [ 0, 0 ], 1 );
+        
+            options = {
+              enableHighAccuracy: true,
+              timeout: 0,
+              maximumAge: 0
+            };
+
             if ( this.props.detect ) {
+
+                navigator.geolcoation.watchPosition(
+                     position => { console.log("watch success:" + position.coords)  }, 
+                     error => { console.log("watchPosition error:" + error.message) } 
+                     ,options);
+
                 navigator.geolocation.getCurrentPosition( position => {
                     that._updateMap( [ position.coords.latitude, position.coords.longitude ], defaultZoom );
                 } );
