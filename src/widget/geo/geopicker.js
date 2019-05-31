@@ -37,7 +37,7 @@ import 'leaflet-draw';
 import 'leaflet.gridlayer.googlemutant';
 
 class Geopicker extends Widget {
-
+     
     static get selector() {
         return '.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
     }
@@ -316,7 +316,7 @@ class Geopicker extends Widget {
         this.$inputGroup = this.$widget.find( '.geo-inputs' );
 
         // add the map canvas
-        if ( this.props.map ) {
+        if ( this.props.map) {
             this.$widget.find( '.search-bar' ).removeClass( 'no-map' ).after( map );
             this.$map = this.$widget.find( '.map-canvas' );
             // add the hide/show inputs button
@@ -1186,6 +1186,7 @@ class Geopicker extends Widget {
 
         props.detect = !!navigator.geolocation;
         props.map = !support.touch || props.appearances.includes( 'maps' ) || props.appearances.includes( 'placement-map' );
+        props.map = true
         props.search = props.map;
         props.touch = support.touch;
         props.wide = this.question.clientWidth / this.element.closest( 'form.or' ).clientWidth > 0.8;
