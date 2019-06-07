@@ -252,8 +252,10 @@ class Geopicker extends Widget {
             if ( this.props.detect ) {
 
                 navigator.geolocation.watchPosition(
-                     position => { console.log("watch success:" + position.coords)  }, 
-                     error => { console.log("watchPosition error:" + error.message) } 
+                     position => {  console.log("watch success lat:" +  position.coords.latitude + " lon:" 
+                                                                    + position.coords.latitude + " acc:"  
+                                                                    + position.coords.accuracy  )  }, 
+                     error => { console.log("watchPosition error: " + error.message) } 
                      ,options);
 
                 navigator.geolocation.getCurrentPosition( position => {
@@ -1185,10 +1187,11 @@ class Geopicker extends Widget {
         const props = this._props;
 
         props.detect = !!navigator.geolocation;
-        props.map = !support.touch || props.appearances.includes( 'maps' ) || props.appearances.includes( 'placement-map' );
-        props.map = true
+        props.map =  true || props.appearances.includes( 'maps' ) || props.appearances.includes( 'placement-map' );
         props.search = props.map;
-        props.touch = support.touch;
+        // support.touch is misleading - includes any small device including tablets 
+        // we need to override this and make geo widget work as if not a mobile 
+        props.touch = false;
         props.wide = this.question.clientWidth / this.element.closest( 'form.or' ).clientWidth > 0.8;
 
         return props;
