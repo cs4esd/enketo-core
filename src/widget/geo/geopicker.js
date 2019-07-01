@@ -16,7 +16,7 @@ const maps = ( config && config.maps && config.maps.length > 0 ) ? config.maps :
     'maxzoom': 24,
     'tiles': [ 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' ],
     'attribution': '© <a href="http://openstreetmap.org">OpenStreetMap</a> | <a href="www.openstreetmap.org/copyright">Terms</a>'
-} ];
+} ];f
 let searchSource = 'https://maps.googleapis.com/maps/api/geocode/json?address={address}&sensor=true&key={api_key}';
 const googleApiKey = config.googleApiKey || config.google_api_key;
 const iconSingle = L.divIcon( {
@@ -32,12 +32,12 @@ const iconMultiActive = L.divIcon( {
     className: 'enketo-geopoint-circle-marker-active'
 } );
 
-// Leaflet extensions. 
+// Leaflet extensions.
 import 'leaflet-draw';
 import 'leaflet.gridlayer.googlemutant';
 
 class Geopicker extends Widget {
-     
+
     static get selector() {
         return '.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
     }
@@ -58,6 +58,7 @@ class Geopicker extends Widget {
 
         this._addDomElements();
         this.currentIndex = 0;
+        this.initialWatchPosition = true ;
         this.points = [];
 
         // load default value
@@ -99,7 +100,7 @@ class Geopicker extends Widget {
             const value = event.target.value;
             const coords = that._convertKmlCoordinatesToLeafletCoordinates( value );
 
-            // reset textarea 
+            // reset textarea
             event.target.value = '';
 
             setTimeout( () => {
@@ -242,20 +243,36 @@ class Geopicker extends Widget {
         if ( !loadedVal ) {
             // set worldview in case permissions take too long (e.g. in FF);
             this._updateMap( [ 0, 0 ], 1 );
-        
+
             var options = {
               enableHighAccuracy: true,
-              timeout: 0,
+              timeout: 5000,
               maximumAge: 0
             };
 
             if ( this.props.detect ) {
 
                 navigator.geolocation.watchPosition(
-                     position => {  console.log("watch success lat:" +  position.coords.latitude + " lon:" 
-                                                                    + position.coords.latitude + " acc:"  
-                                                                    + position.coords.accuracy  )  }, 
-                     error => { console.log("watchPosition error: " + error.message) } 
+                         position => {  console.log("watch success lat:" +  position.coords.latitude + " lon:"
+                                                                    + position.coords.latitude + " acc:"
+                                                                    + position.coords.accuracy + " initialWatchPosition: "
+								    + that.initialWatchPosition ) ;
+                         if(that.initialWatchPosition)
+				{
+					console.log("firstWatchPosition lat: " + position.coords.latitude ) ;
+				        const latLng = {
+                    				lat: Math.round( position.coords.latitude * 1000000 ) / 1000000,
+                    				lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
+                			};
+					that._updateInputs( [ latLng.lat, latLng.lng, position.coords.altitude, position.coords.accuracy ], 'change.bymap' );
+					//that._updateMap( [ position.coords.latitude, position.coords.longitude ], defaultZoom );
+					that.initialWatchPosition = false ;
+				}
+                      } ,
+		      error => {
+                              console.log("watchPosition error: " + error.message);
+
+                          }
                      ,options);
 
                 navigator.geolocation.getCurrentPosition( position => {
@@ -305,7 +322,7 @@ class Geopicker extends Widget {
         const srchTxt = t( 'geopicker.searchPlaceholder' );
 
         this.$widget = $(
-            `<div class="geopicker widget"><div class="search-bar hide-search no-map no-detect"><button type="button" class="hide-map-btn btn btn-default"><span class="icon icon-arrow-left"> </span></button><button name="geodetect" type="button" class="btn btn-default" title="detect current location OK" data-placement="top"><span class="icon icon-crosshairs"> </span></button><div class="input-group"><input class="geo ignore" name="search" type="text" placeholder="${srchTxt}" disabled="disabled"/><button type="button" class="btn btn-default search-btn"><i class="icon icon-search"> </i></button></div></div><div class="geo-inputs"><label class="geo lat">${latTxt}<input class="ignore" name="lat" type="number" step="0.000001" min="-90" max="90"/></label><label class="geo long">${lngTxt}<input class="ignore" name="long" type="number" step="0.000001" min="-180" max="180"/></label><label class="geo alt">${altTxt}<input class="ignore" name="alt" type="number" step="0.1" /></label><label class="geo acc">${accTxt}<input class="ignore" name="acc" type="number" step="0.1" /></label><button type="button" class="btn-icon-only btn-remove" aria-label="remove"><span class="icon icon-trash"> </span></button></div></div>`
+            `<div class="geopicker widget"><div class="search-bar hide-search no-map no-detect"><button type="button" class="hide-map-btn btn btn-default"><span class="icon icon-arrow-left"> </span></button><button name="geodetect" type="button" class="btn btn-default" title="detect current location" data-placement="top"><span class="icon icon-crosshairs"> </span></button><div class="input-group"><input class="geo ignore" name="search" type="text" placeholder="${srchTxt}" disabled="disabled"/><button type="button" class="btn btn-default search-btn" style="display:none;"><i class="icon icon-search" style="display:none;"> </i></button></div></div><div class="geo-inputs"><label class="geo lat">${latTxt}<input class="ignore" name="lat" type="number" step="0.000001" min="-90" max="90"/></label><label class="geo long">${lngTxt}<input class="ignore" name="long" type="number" step="0.000001" min="-180" max="180"/></label><label class="geo alt">${altTxt}<input class="ignore" name="alt" type="number" step="0.1" /></label><label class="geo acc">${accTxt}<input class="ignore" name="acc" type="number" step="0.1" /></label><button type="button" class="btn-icon-only btn-remove" aria-label="remove"><span class="icon icon-trash"> </span></button></div></div>`
         );
 
         // add the detection button
@@ -332,7 +349,7 @@ class Geopicker extends Widget {
             this.$map.append( mapBtn );
         }
 
-        // unhide search bar 
+        // unhide search bar
         // TODO: can be done in CSS?
         if ( !this.props.touch ) {
             this.$widget.find( '.search-bar' ).removeClass( 'hide-search' );
@@ -462,17 +479,22 @@ class Geopicker extends Widget {
      */
     _enableDetection() {
         const that = this;
-        const options = {
+        var options = {
             enableHighAccuracy: true,
-            maximumAge: 0
+            maximumAge: 10000,
+            timeout: 5000
         };
         this.$detect.click( event => {
             event.preventDefault();
+            console.log("detect click event" ) ;
             navigator.geolocation.getCurrentPosition( position => {
                 const latLng = {
                     lat: Math.round( position.coords.latitude * 1000000 ) / 1000000,
                     lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
                 };
+
+		console.log("getCurrentPosition latitude: " + position.coords.latitude
+				+ "longitude: " + position.coords.longitude ) ;
 
                 if ( that.polyline && that.props.type === 'geoshape' && that.updatedPolylineWouldIntersect( latLng, that.currentIndex ) ) {
                     that._showIntersectError();
@@ -485,8 +507,17 @@ class Geopicker extends Widget {
                         that._addPoint();
                     }
                 }
-            }, () => {
-                console.error( 'error occurred trying to obtain position' );
+            }, (error) => {
+                console.error( 'error occurred trying to obtain position:' + error.message );
+                if(error.code === 3)
+                {
+                    alert("Location fix timed out. Check location settings and then try again") ;
+                    if(options.timeout < 60001)
+                    {
+                      options.timeout = options.timeout + 5000 ;
+                    }
+
+                }
             }, options );
             return false;
         } );
@@ -647,13 +678,16 @@ class Geopicker extends Widget {
                 that.$widget.find( '.leaflet-control-layers-toggle' ).append( '<span class="icon icon-globe"></span>' );
 
                 // Add ignore and option-label class to Leaflet-added input elements and their labels
-                // something weird seems to happen. It seems the layercontrol is added twice (second replacing first) 
-                // which means the classes are not present in the final control. 
+                // something weird seems to happen. It seems the layercontrol is added twice (second replacing first)
+                // which means the classes are not present in the final control.
                 // Using the baselayerchange event handler is a trick that seems to work.
                 that.map.on( 'baselayerchange', () => {
                     that.$widget.find( '.leaflet-control-container input' ).addClass( 'ignore no-unselect' ).next( 'span' ).addClass( 'option-label' );
                 } );
-            } );
+            } )
+            .catch( reason => {
+              console.log("Error getLayers: " + reason) ;
+            });
     }
 
     _updateDynamicMapView( latLng, zoom ) {
@@ -856,7 +890,7 @@ class Geopicker extends Widget {
                         // first set the current index the point dragged
                         that._setCurrent( index );
                         that._updateInputs( latLng, 'change.bymap' );
-                        that._updateMap();
+                        that._updateMap(latLng, that.map._zoom);
                     }
                 } ) );
             } else {
@@ -1066,6 +1100,7 @@ class Geopicker extends Widget {
      * @param  {string=} ev  [description]
      */
     _updateInputs( coords, ev ) {
+	console.log("_updateInputs") ;
         const lat = coords[ 0 ] || coords.lat || '';
         const lng = coords[ 1 ] || coords.lng || '';
         const alt = coords[ 2 ] || coords.alt || '';
@@ -1079,7 +1114,7 @@ class Geopicker extends Widget {
         this.$acc.val( acc || '' ).trigger( ev );
     }
 
-    /** 
+    /**
      * Converts the contents of a single KML <coordinates> element (may inlude the coordinates tags as well) to an array
      * of geopoint coordinates used in the ODK XForm format. Note that the KML format does not allow spaces within a tuple of coordinates
      * only between. Separator between KML tuples can be newline, space or a combination.
@@ -1188,9 +1223,9 @@ class Geopicker extends Widget {
 
         props.detect = !!navigator.geolocation;
         props.map =  true || props.appearances.includes( 'maps' ) || props.appearances.includes( 'placement-map' );
-        props.search = props.map;
-        // support.touch is misleading - includes any small device including tablets 
-        // we need to override this and make geo widget work as if not a mobile 
+        props.search = false ;
+        // support.touch is misleading - includes any small device including tablets
+        // we need to override this and make geo widget work as if not a mobile
         props.touch = false;
         props.wide = this.question.clientWidth / this.element.closest( 'form.or' ).clientWidth > 0.8;
 
