@@ -1222,7 +1222,7 @@ class Geopicker extends Widget {
         const props = this._props;
 
         props.detect = !!navigator.geolocation;
-        props.map =  true || props.appearances.includes( 'maps' ) || props.appearances.includes( 'placement-map' );
+        props.map =   props.appearances.includes( 'maps' ) || props.appearances.includes( 'placement-map' );
         props.search = false ;
         // support.touch is misleading - includes any small device including tablets
         // we need to override this and make geo widget work as if not a mobile
