@@ -306,7 +306,7 @@ class Geopicker extends Widget {
             var options = {
               enableHighAccuracy: true,
               timeout: 5000,
-              maximumAge: 10000
+              maximumAge: 0
             };
 
             if ( this.props.detect ) {
@@ -576,10 +576,10 @@ class Geopicker extends Widget {
                 if(error.code === 3)
                 {
                     alert("Location fix timed out. Check location settings and then try again") ;
-                    if(options.timeout < 60001)
-                    {
-                      options.timeout = options.timeout + 5000 ;
-                    }
+                   // if(options.timeout < 60001)
+                   // {
+                   //   options.timeout = options.timeout + 5000 ;
+                   // }
 
                 }
             }, options );
