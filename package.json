@@ -24,9 +24,11 @@
         "email": "martijn@enketo.org",
         "url": "https://www.linkedin.com/in/martijnvanderijdt"
     },
-    "contributors": [ {
-        "name": "Alex Anderson"
-    } ],
+    "contributors": [
+        {
+            "name": "Alex Anderson"
+        }
+    ],
     "bugs": "https://github.com/enketo/enketo-core/issues",
     "main": "src/js/form.js",
     "scripts": {
@@ -81,7 +83,9 @@
         "jquery-touchswipe": "^1.6.19",
         "leaflet": "1.4.x",
         "leaflet-draw": "github:enketo/Leaflet.draw#ff73078",
+        "leaflet-offline": "^1.1.0",
         "leaflet.gridlayer.googlemutant": "0.8.x",
+        "localforage": "^1.7.3",
         "mergexml": "1.1.2",
         "signature_pad": "2.3.x"
     }

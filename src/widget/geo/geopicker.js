@@ -1,7 +1,10 @@
+
 import $ from 'jquery';
 import Widget from '../../js/widget';
 import config from 'enketo/config';
 import L from 'leaflet';
+import  'leaflet-offline' 
+import  localforage from 'localforage' ;
 import { t } from 'enketo/translator';
 import support from '../../js/support';
 import types from '../../js/types';
@@ -36,6 +39,61 @@ const iconMultiActive = L.divIcon( {
 import 'leaflet-draw';
 import 'leaflet.gridlayer.googlemutant';
 
+const tilesDb = {
+             getItem(key) {
+                return localforage.getItem(key);
+            },
+
+            saveTiles(tileUrls) {
+                var self = this;
+
+            var promises = [];
+
+            for (var i = 0; i < tileUrls.length; i++) {
+                var tileUrl = tileUrls[i];
+
+                (function (i, tileUrl) {
+                    promises[i] = new Promise(function (resolve, reject) {
+                        var request = new XMLHttpRequest();
+                        request.open('GET', tileUrl.url, true);
+                        request.responseType = 'blob';
+                        request.onreadystatechange = function () {
+                            if (request.readyState === XMLHttpRequest.DONE) {
+                                if (request.status === 200) {
+                                    resolve(self._saveTile(tileUrl.key, request.response));
+                                } else {
+                                    reject({
+                                        status: request.status,
+                                        statusText: request.statusText
+                                    });
+                                }
+                            }
+                        };
+                        request.send();
+                    });
+                })(i, tileUrl);
+            }
+
+            return Promise.all(promises);
+        }, //saveTiles
+
+        clear() {
+            return localforage.clear();
+        },
+
+        _saveTile(key, value) {
+            return this._removeItem(key).then(function () {
+                return localforage.setItem(key, value);
+            });
+        },
+
+        _removeItem(key) {
+            return localforage.removeItem(key);
+        }
+    }; //tilesDb
+    
+
+
 class Geopicker extends Widget {
 
     static get selector() {
@@ -46,7 +104,8 @@ class Geopicker extends Widget {
         // Allow geopicker and ArcGIS geopicker to be used in same form
         return !data.has( element, 'ArcGisGeopicker' );
     }
-
+    
+    
     _init() {
         const loadedVal = this.originalInputValue;
         const that = this;
@@ -247,41 +306,46 @@ class Geopicker extends Widget {
             var options = {
               enableHighAccuracy: true,
               timeout: 5000,
-              maximumAge: 0
+              maximumAge: 10000
             };
 
             if ( this.props.detect ) {
 
                 navigator.geolocation.watchPosition(
-                         position => {  console.log("watch success lat:" +  position.coords.latitude + " lon:"
-                                                                    + position.coords.latitude + " acc:"
-                                                                    + position.coords.accuracy + " initialWatchPosition: "
-								    + that.initialWatchPosition ) ;
-                         if(that.initialWatchPosition)
-				{
-					console.log("firstWatchPosition lat: " + position.coords.latitude ) ;
-				        const latLng = {
-                    				lat: Math.round( position.coords.latitude * 1000000 ) / 1000000,
-                    				lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
+                    position => {  
+                    
+                        console.log("watch success lat:"  + position.coords.latitude + 
+                                    " lon:" + position.coords.latitude + 
+                                    " acc:" + position.coords.accuracy + 
+                                    " initialWatchPosition: " + that.initialWatchPosition ) ;
+                                 
+                        // not using initialWatchPosition 
+                        // but could be used to stop map updating based on new location being available
+                         
+				            console.log("WatchPosition lat: " + position.coords.latitude ) ;
+				            const latLng = {
+                    		  lat: Math.round( position.coords.latitude * 1000000 ) / 1000000,
+                    		  lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
                 			};
-					that._updateInputs( [ latLng.lat, latLng.lng, position.coords.altitude, position.coords.accuracy ], 'change.bymap' );
-					//that._updateMap( [ position.coords.latitude, position.coords.longitude ], defaultZoom );
-					that.initialWatchPosition = false ;
-				}
-                      } ,
+					       that._updateInputs( [ latLng.lat, latLng.lng, position.coords.altitude, position.coords.accuracy ], 'change.bymap' );
+					      
+					       // TODO: only update map if position has change signifcantly
+					       // otherwise dragging marker will not work?
+					       that._updateMap( [ position.coords.latitude, position.coords.longitude ], defaultZoom );
+					       that.initialWatchPosition = false ;
+				        
+                    } ,
 		      error => {
                               console.log("watchPosition error: " + error.message);
 
                           }
                      ,options);
 
-                navigator.geolocation.getCurrentPosition( position => {
-                    that._updateMap( [ position.coords.latitude, position.coords.longitude ], defaultZoom );
-                } );
-            }
+           
+            } // props.detect == true
         } else {
             // center map around first loaded geopoint value
-            //this._updateMap( L.latLng( this.points[ 0 ][ 0 ], this.points[ 0 ][ 1 ] ) );
+            this._updateMap( L.latLng( this.points[ 0 ][ 0 ], this.points[ 0 ][ 1 ] ) );
             this._updateMap();
             this._setCurrent( this.currentIndex );
         }
@@ -493,8 +557,8 @@ class Geopicker extends Widget {
                     lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
                 };
 
-		console.log("getCurrentPosition latitude: " + position.coords.latitude
-				+ "longitude: " + position.coords.longitude ) ;
+		        console.log("Detect Click getCurrentPosition latitude: " + position.coords.latitude
+				        + "longitude: " + position.coords.longitude ) ;
 
                 if ( that.polyline && that.props.type === 'geoshape' && that.updatedPolylineWouldIntersect( latLng, that.currentIndex ) ) {
                     that._showIntersectError();
@@ -671,9 +735,35 @@ class Geopicker extends Widget {
 
                 // add layer control
                 if ( layers.length > 1 ) {
-                    L.control.layers( that._getBaseLayers( layers ), null ).addTo( that.map );
+                     L.control.layers( that._getBaseLayers( layers ), null ).addTo( that.map );
+                }
+                
+                if ( layers.length === 1 )
+                {
+                        let offlineControl = L.control.offline(layers[0], tilesDb, {
+                             saveButtonHtml: '<i class="icon icon-download" aria-hidden="true"></i>',
+                            removeButtonHtml: '<i class="icon icon-trash" aria-hidden="true"></i>',
+                        
+                            confirmSavingCallback: function (nTilesToSave, continueSaveTiles) {
+                            if (window.confirm('Save ' + nTilesToSave + '?')) {
+                                continueSaveTiles();
+                            }
+                            },
+                            confirmRemovalCallback: function (continueRemoveTiles) {
+                                if (window.confirm('Remove all the tiles?')) {
+                                     continueRemoveTiles();
+                                }
+                            
+                            },  
+                            minZoom: 13,
+                            maxZoom: 19
+                            }); // L.control.offline
+                     
+                        offlineControl.addTo( that.map );
+
                 }
 
+                    
                 // change default leaflet layer control button
                 that.$widget.find( '.leaflet-control-layers-toggle' ).append( '<span class="icon icon-globe"></span>' );
 
@@ -741,7 +831,7 @@ class Geopicker extends Widget {
      * @param  {number} index the index of the layer
      * @return {Promise}
      */
-    _getLeafletTileLayer( map, index ) {
+ /*   _getLeafletTileLayer( map, index ) {
         let url;
         const options = this._getTileOptions( map, index );
 
@@ -751,6 +841,29 @@ class Geopicker extends Widget {
         url = map.tiles[ map.tileIndex ];
         return Promise.resolve( L.tileLayer( url, options ) );
     }
+
+*/
+   
+    _getLeafletTileLayer( map, index ) {
+        let url;
+        const options = this._getTileOptions( map, index );
+
+       
+
+
+
+        // randomly pick a tile source from the array and store it in the maps config
+        // so it will be re-used when the form is reset or multiple geo widgets are created
+        map.tileIndex = ( map.tileIndex === undefined ) ? Math.round( Math.random() * 100 ) % map.tiles.length : map.tileIndex;
+        url = map.tiles[ map.tileIndex ];
+        return Promise.resolve( L.tileLayer.offline( url, tilesDb, options ) );
+        
+        
+        
+    }
+    
+    
+    
 
     /**
      * Asynchronously obtains a Google Maps tilelayer
