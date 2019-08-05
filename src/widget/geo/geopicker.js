@@ -315,25 +315,33 @@ class Geopicker extends Widget {
                     position => {  
                     
                         console.log("watch success lat:"  + position.coords.latitude + 
-                                    " lon:" + position.coords.latitude + 
+                                    " lon:" + position.coords.longitude + 
                                     " acc:" + position.coords.accuracy + 
                                     " initialWatchPosition: " + that.initialWatchPosition ) ;
                                  
                         // not using initialWatchPosition 
                         // but could be used to stop map updating based on new location being available
                          
-				            console.log("WatchPosition lat: " + position.coords.latitude ) ;
+                         if(that.initialWatchPosition)
+                         {
+				            
+				            
+				            console.log("Initial Watch Position:"  + position.coords.latitude + 
+                                    " lon:" + position.coords.longitude + 
+                                    " acc:" + position.coords.accuracy + 
+                                    " initialWatchPosition: " + that.initialWatchPosition ) ;
+                                    
 				            const latLng = {
                     		  lat: Math.round( position.coords.latitude * 1000000 ) / 1000000,
                     		  lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
                 			};
-					       that._updateInputs( [ latLng.lat, latLng.lng, position.coords.altitude, position.coords.accuracy ], 'change.bymap' );
+					        that._updateInputs( [ latLng.lat, latLng.lng, position.coords.altitude, position.coords.accuracy ], 'change.bymap' );
 					      
 					       // TODO: only update map if position has change signifcantly
 					       // otherwise dragging marker will not work?
 					       that._updateMap( [ position.coords.latitude, position.coords.longitude ], defaultZoom );
 					       that.initialWatchPosition = false ;
-				        
+				         }
                     } ,
 		      error => {
                               console.log("watchPosition error: " + error.message);
